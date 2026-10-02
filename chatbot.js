@@ -4,6 +4,12 @@
 const qrcode = require("qrcode-terminal");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const flows = require("./flows");
+const server = require("./server");
+
+// =====================================
+// INICIA PAINEL WEB DO QR CODE
+// =====================================
+server.startServer();
 
 // =====================================
 // CONFIGURAÇÃO DO CLIENTE WHATSAPP
@@ -36,14 +42,17 @@ const client = new Client({
 client.on("qr", (qr) => {
   console.log("\n📲 Escaneie o QR Code abaixo com o WhatsApp da loja:\n");
   qrcode.generate(qr, { small: true });
+  server.setQr(qr);
 });
 
 client.on("ready", () => {
   console.log("✅ Tudo certo! WhatsApp da Nana Shoes conectado e pronto para atender.");
+  server.setReady();
 });
 
 client.on("disconnected", (reason) => {
   console.log("⚠️ WhatsApp desconectado:", reason);
+  server.setDisconnected();
 });
 
 // =====================================
