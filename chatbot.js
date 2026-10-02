@@ -8,18 +8,26 @@ const flows = require("./flows");
 // =====================================
 // CONFIGURAÇÃO DO CLIENTE WHATSAPP
 // =====================================
+const puppeteerOptions = {
+  headless: true,
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--no-zygote",
+  ],
+};
+
+if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+  puppeteerOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+}
+
 const client = new Client({
-  authStrategy: new LocalAuth(),
-  puppeteer: {
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process",
-    ],
-  },
+  authStrategy: new LocalAuth({
+    dataPath: process.env.SESSION_DATA_PATH || "./",
+  }),
+  puppeteer: puppeteerOptions,
 });
 
 // =====================================
