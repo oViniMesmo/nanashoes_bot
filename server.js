@@ -1,5 +1,5 @@
 // =====================================
-// PAINEL VISUAL WEB DO QR CODE - NANA SHOES
+// PAINEL VISUAL WEB E STATUS EM TEMPO REAL - NANA SHOES
 // =====================================
 const http = require("http");
 const QRCode = require("qrcode");
@@ -7,6 +7,9 @@ const config = require("./config");
 
 let currentStatus = "loading"; // 'loading' | 'qr' | 'ready' | 'disconnected'
 let currentQrImage = null;
+let connectedAt = null;
+let connectedNumber = null;
+let messagesCount = 0;
 
 function setQr(qrString) {
   currentStatus = "qr";
@@ -17,13 +20,31 @@ function setQr(qrString) {
   });
 }
 
-function setReady() {
+function setReady(number = null) {
   currentStatus = "ready";
   currentQrImage = null;
+  connectedAt = new Date();
+  connectedNumber = number;
 }
 
 function setDisconnected() {
   currentStatus = "disconnected";
+}
+
+function incrementMessageCount() {
+  messagesCount++;
+}
+
+function formatConnectedTime() {
+  if (!connectedAt) return null;
+  return connectedAt.toLocaleString("pt-BR", {
+    timeZone: "America/Fortaleza",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function getHtmlPage() {
@@ -32,19 +53,20 @@ function getHtmlPage() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ativação WhatsApp - ${config.storeName}</title>
+  <title>Painel de Ativação - ${config.storeName}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary: #d81b60;
-      --primary-light: #fce4ec;
-      --bg: #0f1115;
-      --card-bg: #181b22;
-      --border: #2a2e39;
+      --bg: #0d0f14;
+      --card-bg: #161922;
+      --border: #232733;
       --text: #ffffff;
-      --text-muted: #9aa0a6;
+      --text-muted: #8e95a5;
       --success: #00e676;
+      --warning: #ffab00;
+      --danger: #ff5252;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
     body {
@@ -59,26 +81,26 @@ function getHtmlPage() {
     }
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 36px 28px;
+      border-radius: 28px;
+      padding: 40px 32px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
     }
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(216, 27, 96, 0.15);
+      background: rgba(216, 27, 96, 0.12);
       color: #ff4081;
       padding: 6px 14px;
       border-radius: 20px;
       font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.5px;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
       margin-bottom: 16px;
       border: 1px solid rgba(216, 27, 96, 0.3);
     }
@@ -93,62 +115,85 @@ function getHtmlPage() {
       line-height: 1.5;
       margin-bottom: 24px;
     }
+
+    /* STATUS PILL */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+    }
+    .status-pill.online {
+      background: rgba(0, 230, 118, 0.12);
+      color: var(--success);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+    .status-pill.waiting {
+      background: rgba(255, 171, 0, 0.12);
+      color: var(--warning);
+      border: 1px solid rgba(255, 171, 0, 0.3);
+    }
+    .status-pill.offline {
+      background: rgba(255, 82, 82, 0.12);
+      color: var(--danger);
+      border: 1px solid rgba(255, 82, 82, 0.3);
+    }
+
+    .pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 0 currentColor;
+      animation: pulseAnim 1.6s infinite;
+    }
+    @keyframes pulseAnim {
+      0% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6); }
+      70% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+      100% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+    }
+
+    /* QR BOX */
     .qr-box {
       background: #ffffff;
       padding: 16px;
-      border-radius: 18px;
-      display: inline-block;
-      margin: 12px auto 20px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-      min-width: 280px;
-      min-height: 280px;
+      border-radius: 20px;
+      margin: 0 auto 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      width: 300px;
+      height: 300px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .qr-box img {
       width: 100%;
-      max-width: 280px;
-      height: auto;
+      height: 100%;
+      object-fit: contain;
       display: block;
-      border-radius: 8px;
+      border-radius: 10px;
     }
-    .status-text {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      font-size: 14px;
-      color: #ff80ab;
-      font-weight: 600;
-      margin-bottom: 24px;
-    }
-    .pulse-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #ff4081;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 64, 129, 0.7); }
-      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(255, 64, 129, 0); }
-      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 64, 129, 0); }
-    }
+
+    /* INSTRUCTIONS */
     .instructions {
       text-align: left;
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 16px;
-      margin-top: 10px;
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 14px;
     }
     .instructions h3 {
       font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--text-muted);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
     .step {
       display: flex;
@@ -157,7 +202,7 @@ function getHtmlPage() {
       font-size: 13px;
       line-height: 1.5;
       margin-bottom: 8px;
-      color: #e0e0e0;
+      color: #d1d5db;
     }
     .step-number {
       background: var(--primary);
@@ -173,20 +218,46 @@ function getHtmlPage() {
       flex-shrink: 0;
       margin-top: 1px;
     }
-    .success-card {
+
+    /* TELA QUANDO ESTÁ ONLINE */
+    .online-card {
       display: none;
-      padding: 20px 0;
+      padding: 10px 0;
     }
-    .success-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
+    .online-icon {
+      font-size: 56px;
+      margin-bottom: 14px;
+      animation: float 3s ease-in-out infinite;
     }
-    .success-title {
-      font-size: 22px;
-      color: var(--success);
-      font-weight: 800;
-      margin-bottom: 8px;
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
     }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 24px;
+      text-align: left;
+    }
+    .metric-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .metric-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: block;
+    }
+    .metric-value {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
     .footer {
       margin-top: 24px;
       font-size: 12px;
@@ -197,26 +268,27 @@ function getHtmlPage() {
 <body>
   <div class="container">
     <div class="badge">👠 ${config.storeName}</div>
-    <h1>Ativação do WhatsApp</h1>
-    <p class="subtitle">Este QR Code é exclusivo para conectar o WhatsApp oficial da <strong>${config.storeName}</strong> ao robô de atendimento 24h.</p>
+    <h1>Central do Robô</h1>
+    <p class="subtitle">Monitoramento e Ativação do Atendimento Automático 24h</p>
 
-    <!-- ÁREA DO QR CODE -->
+    <!-- PÍLULA DE STATUS DINÂMICA -->
+    <div id="status-pill" class="status-pill waiting">
+      <span class="pulse"></span>
+      <span id="status-text">Iniciando conexão...</span>
+    </div>
+
+    <!-- SEÇÃO: AGUARDANDO QR CODE -->
     <div id="qr-section">
       <div class="qr-box">
-        <img id="qr-img" src="" alt="Carregando QR Code..." style="display:none;">
-        <span id="loading-text" style="color: #666; font-size: 14px;">Iniciando conexão segura...</span>
-      </div>
-
-      <div class="status-text">
-        <span class="pulse-dot"></span>
-        <span id="status-label">Aguardando leitura do código...</span>
+        <img id="qr-img" src="" alt="QR Code" style="display:none;">
+        <span id="loading-spinner" style="color: #666; font-size: 14px;">Gerando QR Code seguro...</span>
       </div>
 
       <div class="instructions">
-        <h3>Passo a passo no seu celular:</h3>
+        <h3>Como conectar seu WhatsApp:</h3>
         <div class="step">
           <span class="step-number">1</span>
-          <span>Abra o WhatsApp no aparelho da <strong>${config.storeName}</strong>.</span>
+          <span>Abra o WhatsApp no celular da <strong>${config.storeName}</strong>.</span>
         </div>
         <div class="step">
           <span class="step-number">2</span>
@@ -224,7 +296,7 @@ function getHtmlPage() {
         </div>
         <div class="step">
           <span class="step-number">3</span>
-          <span>Acesse <strong>Aparelhos conectados > Conectar um aparelho</strong>.</span>
+          <span>Selecione <strong>Aparelhos conectados > Conectar um aparelho</strong>.</span>
         </div>
         <div class="step">
           <span class="step-number">4</span>
@@ -233,49 +305,80 @@ function getHtmlPage() {
       </div>
     </div>
 
-    <!-- TELA DE SUCESSO (EXIBIDA APÓS ESCANEAR) -->
-    <div id="success-section" class="success-card">
-      <div class="success-icon">🎉</div>
-      <div class="success-title">WhatsApp Conectado!</div>
-      <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin-top: 12px;">
-        O atendimento automático da <strong>${config.storeName}</strong> já está ativo e respondendo aos clientes em tempo real.
+    <!-- SEÇÃO: ROBÔ 100% ONLINE E CONECTADO -->
+    <div id="online-section" class="online-card">
+      <div class="online-icon">🟢</div>
+      <h2 style="font-size: 22px; color: var(--success); font-weight: 800; margin-bottom: 8px;">Robô Ativo & Operando!</h2>
+      <p style="color: var(--text-muted); font-size: 14px; line-height: 1.5;">
+        O WhatsApp da <strong>${config.storeName}</strong> está conectado e respondendo a todos os clientes automaticamente.
       </p>
+
+      <div class="metrics-grid">
+        <div class="metric-item">
+          <span class="metric-label">Status do WhatsApp</span>
+          <span class="metric-value" style="color: var(--success);">100% Conectado</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Ativo Desde</span>
+          <span class="metric-value" id="connected-time">--:--</span>
+        </div>
+        <div class="metric-item" style="grid-column: span 2;">
+          <span class="metric-label">Mensagens Automáticas Respondidas</span>
+          <span class="metric-value" id="messages-count">0</span>
+        </div>
+      </div>
     </div>
 
     <div class="footer">
-      Ambiente Seguro &bull; Atualização em tempo real
+      Ambiente de Produção &bull; Sincronização em Tempo Real
     </div>
   </div>
 
   <script>
-    async function checkStatus() {
+    async function updateStatus() {
       try {
         const res = await fetch('/status');
         const data = await res.json();
 
+        const pill = document.getElementById('status-pill');
+        const statusText = document.getElementById('status-text');
         const qrSection = document.getElementById('qr-section');
-        const successSection = document.getElementById('success-section');
+        const onlineSection = document.getElementById('online-section');
         const qrImg = document.getElementById('qr-img');
-        const loadingText = document.getElementById('loading-text');
-        const statusLabel = document.getElementById('status-label');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const connectedTime = document.getElementById('connected-time');
+        const messagesCount = document.getElementById('messages-count');
 
         if (data.status === 'ready') {
+          pill.className = 'status-pill online';
+          statusText.innerText = 'ROBÔ ONLINE & CONECTADO';
           qrSection.style.display = 'none';
-          successSection.style.display = 'block';
+          onlineSection.style.display = 'block';
+
+          if (data.connectedAt) {
+            connectedTime.innerText = data.connectedAt;
+          }
+          messagesCount.innerText = data.messagesCount || 0;
         } else if (data.status === 'qr' && data.qrImage) {
-          loadingText.style.display = 'none';
+          pill.className = 'status-pill waiting';
+          statusText.innerText = 'AGUARDANDO LEITURA DO QR CODE';
+          qrSection.style.display = 'block';
+          onlineSection.style.display = 'none';
+
+          loadingSpinner.style.display = 'none';
           qrImg.src = data.qrImage;
           qrImg.style.display = 'block';
-          statusLabel.innerText = 'Código atualizado! Aponte a câmera do WhatsApp.';
+        } else if (data.status === 'disconnected') {
+          pill.className = 'status-pill offline';
+          statusText.innerText = 'DESCONECTADO (Reconectando...)';
         }
       } catch (e) {
-        console.error('Erro ao verificar status:', e);
+        console.error('Falha ao checar status:', e);
       }
     }
 
-    // Consulta o status a cada 2.5 segundos
-    setInterval(checkStatus, 2500);
-    checkStatus();
+    setInterval(updateStatus, 2000);
+    updateStatus();
   </script>
 </body>
 </html>`;
@@ -289,6 +392,9 @@ function startServer(port = process.env.PORT || 3000) {
         JSON.stringify({
           status: currentStatus,
           qrImage: currentQrImage,
+          connectedAt: formatConnectedTime(),
+          connectedNumber: connectedNumber,
+          messagesCount: messagesCount,
           storeName: config.storeName,
         })
       );
@@ -306,7 +412,7 @@ function startServer(port = process.env.PORT || 3000) {
   });
 
   server.listen(port, () => {
-    console.log(`🌐 Painel visual do QR Code rodando em: http://localhost:${port}`);
+    console.log(`🌐 Painel visual do robô rodando em: http://localhost:${port}`);
   });
 
   return server;
@@ -317,4 +423,5 @@ module.exports = {
   setQr,
   setReady,
   setDisconnected,
+  incrementMessageCount,
 };

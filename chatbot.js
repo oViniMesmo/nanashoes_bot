@@ -46,8 +46,9 @@ client.on("qr", (qr) => {
 });
 
 client.on("ready", () => {
+  const number = client.info && client.info.wid ? client.info.wid.user : null;
   console.log("✅ Tudo certo! WhatsApp da Nana Shoes conectado e pronto para atender.");
-  server.setReady();
+  server.setReady(number);
 });
 
 client.on("disconnected", (reason) => {
@@ -78,6 +79,8 @@ client.on("message", async (msg) => {
 
     // Se houver respostas a enviar (caso não esteja em atendimento humano)
     if (replies && replies.length > 0) {
+      server.incrementMessageCount();
+
       // Simula digitação para resposta natural
       await chat.sendStateTyping();
       await delay(1500);
