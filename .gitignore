@@ -1,0 +1,18 @@
+# Dependências
+node_modules/
+
+# Sessão e autenticação do WhatsApp (CRÍTICO: nunca subir para o GitHub!)
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Variáveis de ambiente e credenciais
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
